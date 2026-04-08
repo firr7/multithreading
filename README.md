@@ -1,1 +1,1 @@
-https://firr7.github.io/multithreads
+https://firr7.github.io/multithreading
