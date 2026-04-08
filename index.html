@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multithreading & Concorrenza — Guida allo Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0c10;
+    --bg2: #12141a;
+    --bg3: #1a1d26;
+    --bg4: #22263a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf2;
+    --text2: #8890aa;
+    --text3: #545c7a;
+    --accent: #5b8dee;
+    --accent2: #3d6bcc;
+    --teal: #3dd9a4;
+    --teal2: #1fa876;
+    --amber: #f5a623;
+    --red: #f05555;
+    --purple: #a78bfa;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --sidebar-w: 260px;
+    --header-h: 64px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: var(--header-h);
+    background: rgba(11,12,16,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 2rem;
+    gap: 1.5rem;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--text);
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--teal));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #fff;
+  }
+
+  .header-tag {
+    font-size: 11px; font-weight: 500; letter-spacing: .06em;
+    color: var(--accent);
+    background: rgba(91,141,238,.12);
+    border: 1px solid rgba(91,141,238,.2);
+    border-radius: 999px; padding: 3px 10px;
+    text-transform: uppercase;
+  }
+
+  .header-progress {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text2);
+  }
+
+  .progress-bar {
+    width: 120px; height: 4px;
+    background: var(--bg4);
+    border-radius: 999px; overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--teal));
+    border-radius: 999px;
+    width: 0%;
+    transition: width .4s ease;
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: flex;
+    padding-top: var(--header-h);
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    width: var(--sidebar-w);
+    height: calc(100vh - var(--header-h));
+    overflow-y: auto;
+    padding: 2rem 1.25rem;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  aside::-webkit-scrollbar { width: 4px; }
+  aside::-webkit-scrollbar-track { background: transparent; }
+  aside::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+  .nav-section { margin-bottom: 2rem; }
+
+  .nav-section-title {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text3); font-weight: 600; padding: 0 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .nav-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-size: 13.5px;
+    font-weight: 400;
+    text-decoration: none;
+    transition: all .15s;
+    cursor: pointer;
+  }
+
+  .nav-link:hover { background: var(--bg3); color: var(--text); }
+  .nav-link.active { background: rgba(91,141,238,.12); color: var(--accent); font-weight: 500; }
+
+  .nav-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text3); flex-shrink: 0;
+    transition: background .15s;
+  }
+  .nav-link.active .nav-dot { background: var(--accent); }
+
+  .nav-link-num {
+    margin-left: auto; font-size: 11px; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── MAIN ── */
+  main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    padding: 3rem 3.5rem 6rem;
+    max-width: 900px;
+  }
+
+  /* ── SECTION ── */
+  .page-section {
+    display: none;
+    animation: fadeIn .3s ease;
+  }
+  .page-section.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── HERO ── */
+  .section-hero {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-eyebrow {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin-bottom: .75rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .section-eyebrow::before {
+    content: '';
+    display: inline-block; width: 20px; height: 2px;
+    background: var(--accent); border-radius: 2px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px; font-weight: 800; line-height: 1.15;
+    color: var(--text); margin-bottom: 1rem;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .section-lead {
+    font-size: 16px; color: var(--text2); max-width: 600px; line-height: 1.8;
+  }
+
+  /* ── TYPOGRAPHY ── */
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px; font-weight: 700;
+    color: var(--text); margin: 2.5rem 0 1.25rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  h2::before {
+    content: '';
+    display: block; width: 4px; height: 22px;
+    background: linear-gradient(180deg, var(--accent), var(--teal));
+    border-radius: 4px; flex-shrink: 0;
+  }
+
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px; font-weight: 600;
+    color: var(--text); margin-bottom: .5rem;
+  }
+
+  p { color: var(--text2); margin-bottom: 1rem; line-height: 1.8; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    transition: border-color .2s;
+  }
+  .card:hover { border-color: var(--border2); }
+
+  .card-head {
+    display: flex; align-items: flex-start; gap: 12px; margin-bottom: 1rem;
+  }
+
+  .card-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .icon-blue  { background: rgba(91,141,238,.15); color: var(--accent); }
+  .icon-teal  { background: rgba(61,217,164,.12); color: var(--teal); }
+  .icon-amber { background: rgba(245,166,35,.12);  color: var(--amber); }
+  .icon-red   { background: rgba(240,85,85,.12);   color: var(--red); }
+  .icon-purple{ background: rgba(167,139,250,.12); color: var(--purple); }
+
+  .card h3 { margin-bottom: 0; }
+  .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  .card-body { color: var(--text2); font-size: 14px; line-height: 1.75; }
+
+  /* ── GRID ── */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    border-radius: var(--radius); padding: 1rem 1.25rem;
+    margin: 1.25rem 0; font-size: 14px; line-height: 1.75;
+    border-left: 3px solid;
+  }
+  .callout-blue  { background: rgba(91,141,238,.08);  border-color: var(--accent);  color: #a0b8f0; }
+  .callout-teal  { background: rgba(61,217,164,.08);  border-color: var(--teal);   color: #70e8bc; }
+  .callout-amber { background: rgba(245,166,35,.08);  border-color: var(--amber);  color: #f5c36a; }
+  .callout-red   { background: rgba(240,85,85,.08);   border-color: var(--red);    color: #f08080; }
+  .callout strong { color: inherit; font-weight: 600; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; padding: 3px 9px;
+    border-radius: 999px; border: 1px solid;
+  }
+  .badge-blue   { background: rgba(91,141,238,.12);  color: var(--accent);  border-color: rgba(91,141,238,.25); }
+  .badge-teal   { background: rgba(61,217,164,.1);   color: var(--teal);    border-color: rgba(61,217,164,.25); }
+  .badge-amber  { background: rgba(245,166,35,.1);   color: var(--amber);   border-color: rgba(245,166,35,.25); }
+  .badge-red    { background: rgba(240,85,85,.1);    color: var(--red);     border-color: rgba(240,85,85,.25); }
+  .badge-purple { background: rgba(167,139,250,.1);  color: var(--purple);  border-color: rgba(167,139,250,.25); }
+
+  /* ── CODE ── */
+  pre, code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  pre {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    color: #c8d0e8;
+    line-height: 1.7;
+    margin: 1rem 0;
+  }
+  .kw { color: #a78bfa; }
+  .cm { color: var(--text3); font-style: italic; }
+  .fn { color: var(--accent); }
+  .var { color: var(--teal); }
+  .str { color: var(--amber); }
+
+  /* ── TABLE ── */
+  .tbl-wrap { overflow-x: auto; margin: 1.25rem 0; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--bg3); }
+  th {
+    text-align: left; font-size: 11px; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text3); font-weight: 600;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  td { padding: 12px 16px; font-size: 14px; color: var(--text2); border-bottom: 1px solid var(--border); line-height: 1.6; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+  .cell-label { color: var(--text); font-weight: 500; }
+
+  /* ── PROCESS STATES DIAGRAM ── */
+  .states-diagram {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin: 1.25rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  .state-node {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+
+  .state-circle {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: .02em;
+    transition: transform .2s;
+  }
+  .state-circle:hover { transform: scale(1.06); }
+
+  .s-init    { border-color: var(--border2); color: var(--text3); background: var(--bg3); }
+  .s-ready   { border-color: var(--amber); color: var(--amber); background: rgba(245,166,35,.08); }
+  .s-running { border-color: var(--teal); color: var(--teal); background: rgba(61,217,164,.08); }
+  .s-waiting { border-color: var(--accent); color: var(--accent); background: rgba(91,141,238,.08); }
+  .s-term    { border-color: var(--border2); color: var(--text3); background: var(--bg3); }
+
+  .state-label { font-size: 11px; color: var(--text3); }
+  .state-sub   { font-size: 10px; color: var(--text3); text-align: center; max-width: 80px; }
+
+  .state-arrow {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 0 6px;
+  }
+  .arrow-line { color: var(--text3); font-size: 20px; line-height: 1; }
+  .arrow-label { font-size: 9px; color: var(--text3); white-space: nowrap; text-align: center; }
+
+  /* ── THREAD VS PROCESS VISUAL ── */
+  .proc-visual {
+    display: flex; gap: 1.5rem; flex-wrap: wrap;
+    margin: 1.5rem 0;
+  }
+  .proc-box {
+    flex: 1; min-width: 200px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden;
+  }
+  .proc-box-title {
+    background: var(--bg3); padding: 10px 14px;
+    font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text3); font-weight: 600; border-bottom: 1px solid var(--border);
+  }
+  .proc-resources {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+  }
+  .proc-resources > div {
+    padding: 10px 8px; text-align: center; font-size: 11px; font-weight: 600;
+    border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .proc-resources > div:nth-child(3n) { border-right: none; }
+  .res-shared { color: var(--accent); }
+  .proc-threads {
+    display: flex; gap: 0;
+  }
+  .thread-col {
+    flex: 1;
+    border-right: 1px solid var(--border);
+    padding: 10px 0;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .thread-col:last-child { border-right: none; }
+  .thread-icon { font-size: 18px; margin-bottom: 4px; }
+  .thread-item {
+    font-size: 10px; color: var(--text3); text-align: center;
+    background: var(--bg3); padding: 2px 6px; border-radius: 4px; width: 80%;
+  }
+  .thread-item.priv { color: var(--teal); }
+
+  /* ── REQUIREMENTS CARDS ── */
+  .req-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem;
+    position: relative; overflow: hidden;
+  }
+  .req-card::before {
+    content: attr(data-num);
+    position: absolute; right: 1.25rem; top: 1.25rem;
+    font-family: 'Syne', sans-serif; font-size: 60px; font-weight: 800;
+    color: rgba(255,255,255,.03); line-height: 1;
+  }
+  .req-card h3 { display: flex; align-items: center; gap: 8px; }
+
+  /* ── QUIZ ── */
+  .quiz-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
+  }
+
+  .quiz-stats {
+    display: flex; gap: 1rem;
+  }
+
+  .quiz-stat {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 16px; text-align: center;
+  }
+  .qs-num { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--text); }
+  .qs-lbl { font-size: 11px; color: var(--text3); }
+
+  .q-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem;
+    margin-bottom: 1.25rem; transition: border-color .2s;
+  }
+
+  .q-num {
+    font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace;
+    margin-bottom: .5rem;
+  }
+
+  .q-text {
+    font-size: 15px; font-weight: 500; color: var(--text);
+    margin-bottom: 1rem; line-height: 1.6;
+  }
+
+  .q-options { display: flex; flex-direction: column; gap: 8px; }
+
+  .q-opt {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 14px;
+    font-size: 14px; color: var(--text2);
+    cursor: pointer; text-align: left; width: 100%;
+    transition: all .15s; font-family: 'DM Sans', sans-serif;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .q-opt:hover:not(:disabled) {
+    background: var(--bg4); border-color: var(--border2); color: var(--text);
+  }
+
+  .q-opt-letter {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--bg4); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+    font-family: 'Syne', sans-serif; transition: all .15s;
+  }
+
+  .q-opt.selected { border-color: var(--accent); background: rgba(91,141,238,.08); }
+  .q-opt.selected .q-opt-letter { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .q-opt.correct { border-color: var(--teal); background: rgba(61,217,164,.08); color: #70e8bc; }
+  .q-opt.correct .q-opt-letter { background: var(--teal); border-color: var(--teal); color: #0b2a1e; }
+  .q-opt.wrong { border-color: var(--red); background: rgba(240,85,85,.08); color: #f08080; }
+  .q-opt.wrong .q-opt-letter { background: var(--red); border-color: var(--red); color: #fff; }
+
+  .quiz-actions { display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; }
+
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius); padding: 10px 24px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    transition: background .15s, transform .1s;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:active { transform: scale(.98); }
+
+  .btn-secondary {
+    background: var(--bg2); color: var(--text2);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 24px;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all .15s;
+  }
+  .btn-secondary:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    display: none;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-xl); padding: 3rem 2rem;
+    text-align: center; margin-top: 2rem;
+  }
+  .result-score {
+    font-family: 'Syne', sans-serif; font-size: 72px; font-weight: 800;
+    line-height: 1; margin-bottom: .25rem;
+  }
+  .result-label { font-size: 14px; color: var(--text2); margin-bottom: 1.5rem; }
+  .result-msg { font-size: 18px; font-weight: 500; margin-bottom: 0.5rem; }
+  .result-sub { font-size: 14px; color: var(--text2); max-width: 400px; margin: 0 auto 2rem; }
+
+  .stars { font-size: 32px; letter-spacing: 4px; margin-bottom: 1rem; }
+
+  /* ── FLASHCARD SECTION ── */
+  .flashcard-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem; margin: 1.25rem 0;
+  }
+
+  .flashcard {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.25rem;
+    cursor: pointer; transition: all .2s;
+    min-height: 130px; display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  .flashcard:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+  .flashcard-q {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    margin-bottom: .75rem; line-height: 1.5; flex: 1;
+  }
+
+  .flashcard-hint {
+    font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px;
+  }
+
+  .flashcard-a {
+    display: none; font-size: 13px; color: var(--teal); line-height: 1.6; flex: 1;
+  }
+  .flashcard.flipped .flashcard-q { display: none; }
+  .flashcard.flipped .flashcard-a { display: block; }
+  .flashcard.flipped .flashcard-hint { color: var(--teal2); }
+  .flashcard.flipped { border-color: rgba(61,217,164,.25); background: rgba(61,217,164,.05); }
+
+  .flashcard-accent {
+    position: absolute; top: 0; right: 0;
+    width: 60px; height: 60px;
+    border-radius: 0 var(--radius-lg) 0 60px;
+    opacity: .06;
+  }
+
+  /* ── MOBILE ── */
+  .mobile-nav-toggle {
+    display: none;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 12px;
+    color: var(--text2); cursor: pointer; font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  @media (max-width: 768px) {
+    aside { transform: translateX(-100%); transition: transform .3s; z-index: 90; }
+    aside.open { transform: translateX(0); }
+    main { margin-left: 0; padding: 2rem 1.5rem 4rem; }
+    .mobile-nav-toggle { display: block; }
+    h1 { font-size: 26px; }
+    .proc-visual { flex-direction: column; }
+    .states-diagram { gap: 4px; }
+    .state-circle { width: 56px; height: 56px; font-size: 10px; }
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 6px; }
+
+  /* ── CHIP LIST ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: .75rem 0; }
+  .chip {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 12px;
+    font-size: 13px; color: var(--text2);
+  }
+  .chip.blue  { background: rgba(91,141,238,.1);  border-color: rgba(91,141,238,.2);  color: #a0b8f0; }
+  .chip.teal  { background: rgba(61,217,164,.08); border-color: rgba(61,217,164,.2);  color: #70e8bc; }
+  .chip.amber { background: rgba(245,166,35,.08); border-color: rgba(245,166,35,.2);  color: #f5c36a; }
+
+  /* Overlay for mobile sidebar */
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 89;
+  }
+  .sidebar-overlay.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">MT</div>
+    Multithreading
+  </div>
+  <span class="header-tag">Sistemi Operativi</span>
+  <button class="mobile-nav-toggle" onclick="toggleSidebar()">☰ Menu</button>
+  <div class="header-progress">
+    <span id="progress-label">0%</span>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+</header>
+
+<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<div class="layout">
+  <aside id="sidebar">
+    <div class="nav-section">
+      <div class="nav-section-title">Concetti</div>
+      <a class="nav-link active" onclick="showSection('processi')"><div class="nav-dot"></div>Processi<span class="nav-link-num">01</span></a>
+      <a class="nav-link" onclick="showSection('thread')"><div class="nav-dot"></div>Thread<span class="nav-link-num">02</span></a>
+      <a class="nav-link" onclick="showSection('vantaggi')"><div class="nav-dot"></div>Vantaggi & Confronto<span class="nav-link-num">03</span></a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Concorrenza</div>
+      <a class="nav-link" onclick="showSection('concorrenza')"><div class="nav-dot"></div>Interazione processi<span class="nav-link-num">04</span></a>
+      <a class="nav-link" onclick="showSection('sc')"><div class="nav-dot"></div>Sezione critica<span class="nav-link-num">05</span></a>
+      <a class="nav-link" onclick="showSection('soluzioni')"><div class="nav-dot"></div>Soluzioni ME<span class="nav-link-num">06</span></a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Esercitazione</div>
+      <a class="nav-link" onclick="showSection('flashcard')"><div class="nav-dot"></div>Flashcard<span class="nav-link-num">07</span></a>
+      <a class="nav-link" onclick="showSection('quiz')"><div class="nav-dot"></div>Quiz finale<span class="nav-link-num">08</span></a>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ═══════════════════ PROCESSI ═══════════════════ -->
+    <section class="page-section active" id="processi">
+      <div class="section-hero">
+        <div class="section-eyebrow">01 — Fondamenti</div>
+        <h1>Processi & <span>Sistema Operativo</span></h1>
+        <p class="section-lead">Un processo è un programma in esecuzione: l'unità fondamentale di esecuzione all'interno di un sistema operativo.</p>
+      </div>
+
+      <h2>Concetto di processo</h2>
+
+      <div class="callout callout-blue">
+        <strong>Definizione:</strong> Il processo è un programma in esecuzione. È l'unità di esecuzione all'interno del SO. Solitamente ha esecuzione sequenziale (le istruzioni vengono eseguite nell'ordine specificato). Un SO multiprogrammato consente l'esecuzione concorrente di più processi.
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-icon icon-purple">📄</div>
+            <div><h3>Programma</h3><div class="card-sub">Entità passiva</div></div>
+          </div>
+          <div class="card-body">File eseguibile su disco. Non fa nulla da solo: è solo una sequenza di istruzioni memorizzate. Può dar origine a <em>più processi</em> in esecuzione simultanea.</div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-icon icon-teal">⚡</div>
+            <div><h3>Processo</h3><div class="card-sub">Entità attiva</div></div>
+          </div>
+          <div class="card-body">Programma <em>in esecuzione</em>. Comprende lo stato corrente dell'esecuzione: codice, dati, registri, stack. È dinamico e vive nel tempo.</div>
+        </div>
+      </div>
+
+      <h2>Componenti di un processo</h2>
+
+      <div class="card">
+        <div class="card-body">Un processo è rappresentato da cinque componenti fondamentali:</div>
+        <div class="grid3" style="margin-top:1rem">
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">💻</div>
+            <div style="font-size:13px;font-weight:600;color:var(--accent)">Codice (text)</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px">Istruzioni del programma eseguito</div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">🗃️</div>
+            <div style="font-size:13px;font-weight:600;color:var(--teal)">Dati</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px">Variabili globali allocate staticamente</div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">🎯</div>
+            <div style="font-size:13px;font-weight:600;color:var(--amber)">Program Counter</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px">Prossima istruzione da eseguire</div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">🔧</div>
+            <div style="font-size:13px;font-weight:600;color:var(--purple)">Registri CPU</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px">Valori correnti dei registri</div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">📚</div>
+            <div style="font-size:13px;font-weight:600;color:var(--red)">Stack</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px">Parametri e variabili locali a funzioni</div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Stati di un processo</h2>
+      <p>Durante la sua esistenza, un processo transita tra diversi stati:</p>
+
+      <div class="states-diagram">
+        <div class="state-node">
+          <div class="state-circle s-init">init</div>
+          <div class="state-label">creazione</div>
+        </div>
+        <div class="state-arrow">
+          <div class="arrow-label">crea</div>
+          <div class="arrow-line">→</div>
+        </div>
+        <div class="state-node">
+          <div class="state-circle s-ready">ready</div>
+          <div class="state-label">pronto</div>
+        </div>
+        <div class="state-arrow">
+          <div class="arrow-label">assegna CPU</div>
+          <div class="arrow-line">→</div>
+        </div>
+        <div class="state-node">
+          <div class="state-circle s-running">running</div>
+          <div class="state-label">in esecuzione</div>
+        </div>
+        <div class="state-arrow">
+          <div class="arrow-label">termina</div>
+          <div class="arrow-line">→</div>
+        </div>
+        <div class="state-node">
+          <div class="state-circle s-term">term.</div>
+          <div class="state-label">terminato</div>
+        </div>
+      </div>
+
+      <div class="callout callout-amber">
+        <strong>Nota:</strong> Da <em>running</em> si può tornare a <em>ready</em> (revoca CPU) o passare a <em>waiting</em> (attesa evento I/O). Da <em>waiting</em>, quando l'evento si verifica, si torna a <em>ready</em>. In un sistema monoprocessore, al massimo un processo è nello stato <em>running</em>.
+      </div>
+
+      <div style="display:flex;gap:1rem;margin-top:2rem">
+        <button class="btn-primary" onclick="showSection('thread')">Avanti: Thread →</button>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ THREAD ═══════════════════ -->
+    <section class="page-section" id="thread">
+      <div class="section-hero">
+        <div class="section-eyebrow">02 — Thread</div>
+        <h1>Dai Processi ai <span>Thread</span></h1>
+        <p class="section-lead">Un thread è un'unità di esecuzione indipendente all'interno di un processo, più leggera ed economica di un processo separato.</p>
+      </div>
+
+      <h2>Cos'è un thread</h2>
+
+      <div class="callout callout-teal">
+        <strong>Definizione:</strong> Un thread (o <em>processo leggero, lightweight process</em>) è un'unità di esecuzione indipendente all'interno di un processo. Condivide lo spazio di indirizzamento con gli altri thread del processo. È rappresentato da un <em>Thread Control Block (TCB)</em> che punta al PCB del processo.
+      </div>
+
+      <h2>Risorse condivise e private</h2>
+      <p>I thread di uno stesso processo si dividono le risorse in condivise (del processo) e private (di ciascun thread):</p>
+
+      <div class="proc-visual">
+        <div class="proc-box">
+          <div class="proc-box-title">Processo single-thread</div>
+          <div class="proc-resources">
+            <div class="res-shared">code</div>
+            <div class="res-shared">data</div>
+            <div class="res-shared">files</div>
+            <div>regs</div>
+            <div colspan="2">stack</div>
+            <div></div>
+          </div>
+          <div class="proc-threads">
+            <div class="thread-col">
+              <div class="thread-icon">〰️</div>
+              <div class="thread-item priv">PC</div>
+              <div class="thread-item priv">stack</div>
+              <div class="thread-item priv">regs</div>
+            </div>
+          </div>
+        </div>
+        <div class="proc-box">
+          <div class="proc-box-title">Processo multi-thread</div>
+          <div class="proc-resources">
+            <div class="res-shared">code</div>
+            <div class="res-shared">data</div>
+            <div class="res-shared">files</div>
+          </div>
+          <div class="proc-threads">
+            <div class="thread-col">
+              <div class="thread-icon">〰️</div>
+              <div class="thread-item priv">PC</div>
+              <div class="thread-item priv">stack</div>
+              <div class="thread-item priv">regs</div>
+            </div>
+            <div class="thread-col">
+              <div class="thread-icon">〰️</div>
+              <div class="thread-item priv">PC</div>
+              <div class="thread-item priv">stack</div>
+              <div class="thread-item priv">regs</div>
+            </div>
+            <div class="thread-col">
+              <div class="thread-icon">〰️</div>
+              <div class="thread-item priv">PC</div>
+              <div class="thread-item priv">stack</div>
+              <div class="thread-item priv">regs</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:1rem">
+        <div class="card">
+          <div class="badge badge-blue" style="margin-bottom:.75rem">Condiviso (del processo)</div>
+          <div class="chips">
+            <span class="chip blue">codice eseguibile</span>
+            <span class="chip blue">variabili globali (dati)</span>
+            <span class="chip blue">file aperti</span>
+            <span class="chip blue">risorse kernel</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="badge badge-teal" style="margin-bottom:.75rem">Privato (di ogni thread)</div>
+          <div class="chips">
+            <span class="chip teal">program counter</span>
+            <span class="chip teal">registri CPU</span>
+            <span class="chip teal">stack proprio</span>
+            <span class="chip teal">TSD (memoria privata)</span>
+          </div>
+        </div>
+      </div>
+
+      <h2>Contesto: Thread vs Processo</h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="badge badge-teal" style="margin-bottom:.75rem">Contesto di un thread</div>
+          <div class="card-body">Stato della computazione (registri, stack, PC), attributi di scheduling e priorità, descrittore thread (tid, priorità, segnali pendenti), memoria privata TSD.</div>
+        </div>
+        <div class="card">
+          <div class="badge badge-blue" style="margin-bottom:.75rem">Contesto di un processo</div>
+          <div class="card-body">Tutto quello che è nel contesto di un thread, <strong>più</strong>: spazio di memoria completo, risorse private con tabelle dei descrittori.</div>
+        </div>
+      </div>
+
+      <h2>Strategie di threading</h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-icon icon-amber">⚡</div>
+            <div><h3>Threading asincrono</h3><div class="card-sub">Fork indipendente</div></div>
+          </div>
+          <div class="card-body">Il genitore crea un figlio e riprende subito la propria esecuzione in concorrenza. Ogni thread è indipendente, il genitore non sa quando terminano i figli. Scarsa condivisione di dati. <br><br><strong>Esempio:</strong> web server che gestisce richieste.</div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-icon icon-teal">🔀</div>
+            <div><h3>Threading sincrono</h3><div class="card-sub">Fork-join</div></div>
+          </div>
+          <div class="card-body">Il genitore crea figli e <em>attende</em> che tutti terminino prima di proseguire. I figli si eseguono in concorrenza. Significativa condivisione di dati. Il genitore combina i risultati.</div>
+        </div>
+      </div>
+
+      <h2>Esempi applicativi</h2>
+      <div class="grid3">
+        <div class="card">
+          <div class="card-icon icon-blue" style="margin-bottom:.75rem">🖥️</div>
+          <h3>Foreground/Background</h3>
+          <div class="card-body" style="font-size:13px">Un thread gestisce l'I/O utente mentre altri elaborano in background. Es: word processor (correzione ortografica mentre si scrive).</div>
+        </div>
+        <div class="card">
+          <div class="card-icon icon-teal" style="margin-bottom:.75rem">💾</div>
+          <h3>Asincrono</h3>
+          <div class="card-body" style="font-size:13px">Operazioni asincrone implementate come thread. Es: salvataggio automatico su disco senza bloccare l'utente.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon icon-amber" style="margin-bottom:.75rem">🌐</div>
+          <h3>Task paralleli</h3>
+          <div class="card-body" style="font-size:13px">Task intrinsecamente paralleli. Es: file server, HTTP server con dispatcher thread + worker thread + cache condivisa.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;margin-top:2rem">
+        <button class="btn-secondary" onclick="showSection('processi')">← Processi</button>
+        <button class="btn-primary" onclick="showSection('vantaggi')">Avanti: Vantaggi →</button>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ VANTAGGI ═══════════════════ -->
+    <section class="page-section" id="vantaggi">
+      <div class="section-hero">
+        <div class="section-eyebrow">03 — Confronto</div>
+        <h1>Vantaggi, Svantaggi & <span>Confronto</span></h1>
+        <p class="section-lead">Perché usare i thread? Quando preferire i processi? Un confronto completo per rispondere alla verifica.</p>
+      </div>
+
+      <h2>Vantaggi dei thread</h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-teal">⏱️</div><div><h3>Tempo di risposta</h3></div></div>
+          <div class="card-body">Un programma multithreaded continua la computazione anche se un thread è bloccato (es. attesa I/O). Fondamentale per applicazioni interattive.</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-blue">🤝</div><div><h3>Condivisione risorse</h3></div></div>
+          <div class="card-body">I thread condividono per definizione memoria e risorse del processo. I processi comunicano tramite IPC (più oneroso).</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-amber">💰</div><div><h3>Economia</h3></div></div>
+          <div class="card-body">
+            <span class="badge badge-red">30×</span> più costoso creare un processo vs thread<br><br>
+            <span class="badge badge-amber">5×</span> più costoso il context switch di processo vs thread
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-purple">📈</div><div><h3>Scalabilità</h3></div></div>
+          <div class="card-body">Su architetture multiprocessore i thread vengono eseguiti in vero parallelismo, aumentando il grado di parallelismo del sistema.</div>
+        </div>
+      </div>
+
+      <h2>Svantaggi dei thread</h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-red">🔒</div><div><h3>Risorse private difficili</h3></div></div>
+          <div class="card-body">Thread dello stesso processo possono modificare dati gestiti da altri thread. Per memoria privata servono meccanismi appositi (TSD).</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-red">⚠️</div><div><h3>Pericolo di interferenza</h3></div></div>
+          <div class="card-body">La condivisione accentua il rischio di interferenza. Gli accessi concorrenti devono essere sincronizzati (thread safeness). Un bug in un thread può corrompere l'intero processo.</div>
+        </div>
+      </div>
+
+      <h2>Tabella comparativa: Processi vs Thread</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>Aspetto</th><th>Processo</th><th>Thread</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="cell-label">Creazione / Distruzione</td>
+              <td>Richiede allocazione, copia e deallocazione di grandi quantità di memoria</td>
+              <td>Richiede solo la creazione di uno stack per il thread → molto più veloce</td>
+            </tr>
+            <tr>
+              <td class="cell-label">Errore / Crash</td>
+              <td><span class="badge badge-teal">✓ Isolato</span> Non può danneggiare altri processi</td>
+              <td><span class="badge badge-red">✗ Pericoloso</span> Può danneggiare altri thread e l'intero processo</td>
+            </tr>
+            <tr>
+              <td class="cell-label">Codice</td>
+              <td>Un processo può modificare il proprio codice (es. cambio dell'eseguibile)</td>
+              <td>Il codice è fisso nella sezione text del processo contenitore</td>
+            </tr>
+            <tr>
+              <td class="cell-label">Condivisione</td>
+              <td>Onerosa, deve essere implementata dal programmatore (IPC, shared memory)</td>
+              <td>Automatica: tutti i thread condividono la memoria del processo</td>
+            </tr>
+            <tr>
+              <td class="cell-label">Mutua esclusione</td>
+              <td>Garantita automaticamente dall'isolamento del SO</td>
+              <td>Deve essere realizzata dal programmatore (semafori, mutex, ecc.)</td>
+            </tr>
+            <tr>
+              <td class="cell-label">Prestazioni</td>
+              <td><span class="badge badge-red">Limitate</span> dall'overhead di gestione</td>
+              <td><span class="badge badge-teal">Elevate</span></td>
+            </tr>
+            <tr>
+              <td class="cell-label">Concorrenza</td>
+              <td><span class="badge badge-amber">Limitata</span> dalla difficoltà di comunicazione</td>
+              <td><span class="badge badge-teal">Elevata</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-blue">
+        <strong>Quale scegliere?</strong> Dipende dal caso. Usa i processi quando l'isolamento è critico (es. browser multi-processo). Usa i thread quando le prestazioni e la condivisione di dati sono prioritari (es. server, applicazioni interattive).
+      </div>
+
+      <div style="display:flex;gap:1rem;margin-top:2rem">
+        <button class="btn-secondary" onclick="showSection('thread')">← Thread</button>
+        <button class="btn-primary" onclick="showSection('concorrenza')">Avanti: Concorrenza →</button>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ CONCORRENZA ═══════════════════ -->
+    <section class="page-section" id="concorrenza">
+      <div class="section-hero">
+        <div class="section-eyebrow">04 — Concorrenza</div>
+        <h1>Interazione tra <span>Processi</span></h1>
+        <p class="section-lead">Quando processi o thread condividono risorse, sorgono problemi di accesso concorrente e sincronizzazione.</p>
+      </div>
+
+      <h2>Classificazione dei processi</h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-teal">🔵</div><div><h3>Processi indipendenti</h3></div></div>
+          <div class="card-body">P1 e P2 sono indipendenti se l'esecuzione di P1 non è influenzata da P2 e viceversa. Sia in sequenza che in parallelo, non generano situazioni problematiche. Basta rispettare l'ordine interno di ciascuno.</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-amber">🔴</div><div><h3>Processi interagenti</h3></div></div>
+          <div class="card-body">P1 e P2 sono interagenti se l'esecuzione dell'uno influenza l'altro. L'interazione può essere <em>involontaria</em> (accesso alla stessa risorsa) o <em>volontaria</em> (cooperazione esplicita).</div>
+        </div>
+      </div>
+
+      <h2>Motivazioni dell'interazione</h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="badge badge-amber" style="margin-bottom:.75rem">Competizione</div>
+          <div class="card-body">I processi si coordinano nell'accesso e nell'acquisizione di <strong>risorse comuni</strong>. Devono garantire che non ci siano conflitti.</div>
+        </div>
+        <div class="card">
+          <div class="badge badge-teal" style="margin-bottom:.75rem">Cooperazione</div>
+          <div class="card-body">I processi collaborano per risolvere lo stesso problema. Es: thread dello stesso task, applicazioni client/server.</div>
+        </div>
+      </div>
+
+      <h2>Modalità di interazione</h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-blue">📨</div><div><h3>Comunicazione</h3></div></div>
+          <div class="card-body">Scambio di informazioni tra processi. Nel <em>modello ad ambiente locale</em> avviene tramite canali/porte/file (IPC). Nel <em>modello ad ambiente globale</em> tramite variabili condivise.</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-purple">⏰</div><div><h3>Sincronizzazione</h3></div></div>
+          <div class="card-body">Imposizione di vincoli temporali sull'esecuzione. Es: l'istruzione K di P1 può essere eseguita <em>solo dopo</em> l'istruzione J di P2.</div>
+        </div>
+      </div>
+
+      <h2>Problemi della programmazione concorrente</h2>
+
+      <div class="callout callout-red">
+        <strong>Race Condition (corsa critica):</strong> situazione in cui l'ordine con cui si accede ai dati condivisi influenza il risultato finale dell'esecuzione, che dipende dalla temporizzazione con cui vengono eseguiti i processi. Deve essere assolutamente evitata.
+      </div>
+
+      <div class="card">
+        <h3>Esempio: differente velocità di esecuzione</h3>
+        <div class="card-body" style="margin-top:.75rem">
+          Considera P0 (produttore) e P1 (consumatore) che usano un buffer condiviso:<br><br>
+          <strong>Caso 1 — P0 più veloce:</strong> P0 sovrascrive il buffer prima che P1 lo legga → <span class="badge badge-red">perdita di dati</span><br><br>
+          <strong>Caso 2 — P1 più veloce:</strong> P1 legge lo stesso dato due volte prima che P0 lo aggiorni → <span class="badge badge-red">duplicazione dati</span>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Problema</th><th>Causa</th><th>Soluzione</th></tr></thead>
+          <tbody>
+            <tr><td class="cell-label">Accesso concorrente</td><td>Due processi leggono/scrivono la stessa risorsa simultaneamente</td><td>Mutua esclusione della sezione critica</td></tr>
+            <tr><td class="cell-label">Sincronizzazione</td><td>Differente velocità di esecuzione dei processi</td><td>Semafori, variabili di condizione</td></tr>
+            <tr><td class="cell-label">Deadlock</td><td>Nessun processo può proseguire (attesa circolare)</td><td>Garanzia di progresso</td></tr>
+            <tr><td class="cell-label">Starvation</td><td>Un processo attende indefinitamente</td><td>Garanzia di attesa limitata</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:1rem;margin-top:2rem">
+        <button class="btn-secondary" onclick="showSection('vantaggi')">← Vantaggi</button>
+        <button class="btn-primary" onclick="showSection('sc')">Avanti: Sezione critica →</button>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ SEZIONE CRITICA ═══════════════════ -->
+    <section class="page-section" id="sc">
+      <div class="section-hero">
+        <div class="section-eyebrow">05 — Sezione critica</div>
+        <h1>Sezione <span>Critica</span></h1>
+        <p class="section-lead">La porzione di codice da proteggere dagli accessi concorrenti, con i tre requisiti fondamentali da garantire.</p>
+      </div>
+
+      <h2>Definizione</h2>
+      <div class="callout callout-blue">
+        <strong>Sezione critica:</strong> la parte di codice in cui un processo accede a risorse condivise con altri processi (e dove potrebbero presentarsi race condition). L'esecuzione della sezione critica deve essere <em>mutuamente esclusiva nel tempo</em>: un solo processo alla volta può trovarsi nella propria sezione critica.
+      </div>
+
+      <h2>Struttura del processo</h2>
+      <div class="card">
+        <div class="card-body" style="margin-bottom:.75rem">Ogni processo che usa una sezione critica deve avere questa struttura:</div>
+        <pre><code><span class="kw">do</span> {
+    [sezione d'ingresso]     <span class="cm">// richiede il permesso di entrare</span>
+
+        <span class="var">sezione critica</span>        <span class="cm">// accesso alla risorsa condivisa</span>
+
+    [sezione d'uscita]       <span class="cm">// segnala che ha terminato</span>
+
+        sezione non critica   <span class="cm">// resto del codice</span>
+
+} <span class="kw">while</span> (true)</code></pre>
+      </div>
+
+      <h2>I tre requisiti fondamentali</h2>
+      <div class="grid3">
+        <div class="req-card" data-num="1">
+          <div class="badge badge-red" style="margin-bottom:.75rem">Obbligatorio</div>
+          <h3>Mutua esclusione</h3>
+          <div class="card-body" style="font-size:14px;margin-top:.5rem">Se Pi è in esecuzione nella propria sezione critica, <strong>nessun altro processo</strong> Pj può trovarsi nella propria. Un solo processo per volta.</div>
+        </div>
+        <div class="req-card" data-num="2">
+          <div class="badge badge-amber" style="margin-bottom:.75rem">Anti-deadlock</div>
+          <h3>Progresso</h3>
+          <div class="card-body" style="font-size:14px;margin-top:.5rem">Se nessun processo è nella sezione critica ed alcuni vogliono entrare, la decisione su chi entra non può essere rimandata indefinitamente. Evita lo <strong>stallo</strong>.</div>
+        </div>
+        <div class="req-card" data-num="3">
+          <div class="badge badge-blue" style="margin-bottom:.75rem">Anti-starvation</div>
+          <h3>Attesa limitata</h3>
+          <div class="card-body" style="font-size:14px;margin-top:.5rem">Deve esistere un limite al numero di volte in cui si consente ad altri di entrare prima di un processo in attesa. Ogni processo entra in <strong>tempo finito</strong>.</div>
+        </div>
+      </div>
+
+      <div class="callout callout-amber">
+        <strong>Importante:</strong> questi tre requisiti devono essere garantiti indipendentemente dalla velocità relativa dei processi. Non si può fare nessuna ipotesi sulla velocità relativa degli n processi.
+      </div>
+
+      <div style="display:flex;gap:1rem;margin-top:2rem">
+        <button class="btn-secondary" onclick="showSection('concorrenza')">← Concorrenza</button>
+        <button class="btn-primary" onclick="showSection('soluzioni')">Avanti: Soluzioni ME →</button>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ SOLUZIONI ═══════════════════ -->
+    <section class="page-section" id="soluzioni">
+      <div class="section-hero">
+        <div class="section-eyebrow">06 — Soluzioni</div>
+        <h1>Soluzioni alla <span>Mutua Esclusione</span></h1>
+        <p class="section-lead">Approcci software e hardware per garantire correttamente la mutua esclusione nella sezione critica.</p>
+      </div>
+
+      <h2>Soluzione software: Algoritmo di Peterson</h2>
+      <div class="callout callout-teal">
+        <strong>Algoritmo di Peterson (1981):</strong> soluzione software molto più semplice dell'algoritmo di Dekker (1965). Basato sulla "gentilezza": in caso di accesso contemporaneo, entrambi i processi cedono il passo all'altro. Usa attesa attiva (<em>busy waiting</em>), quindi non è efficiente in termini di CPU.
+      </div>
+
+      <div class="card">
+        <div class="card-body" style="margin-bottom:.75rem">
+          Usa due variabili condivise:
+          <span class="badge badge-blue">VoglioEntrare[2]</span> indica se il processo vuole entrare
+          <span class="badge badge-teal">Turno</span> indica a chi spetta l'accesso
+        </div>
+        <pre><code><span class="cm">// Variabili condivise</span>
+<span class="kw">boolean</span> VoglioEntrare[2];   <span class="cm">// inizialmente false</span>
+<span class="kw">int</span> Turno;
+
+<span class="cm">// ──── Processo P0 ────────────</span>   <span class="cm">// ──── Processo P1 ────────────</span>
+<span class="var">VoglioEntrare</span>[0] = <span class="kw">true</span>;          <span class="var">VoglioEntrare</span>[1] = <span class="kw">true</span>;
+<span class="var">Turno</span> = 1;                         <span class="var">Turno</span> = 0;
+
+<span class="kw">while</span> (<span class="var">VoglioEntrare</span>[1]            <span class="kw">while</span> (<span class="var">VoglioEntrare</span>[0]
+    AND <span class="var">Turno</span>==1) endwhile;              AND <span class="var">Turno</span>==0) endwhile;
+
+    &lt;<span class="str">Sezione Critica</span>&gt;                    &lt;<span class="str">Sezione Critica</span>&gt;
+
+<span class="var">VoglioEntrare</span>[0] = <span class="kw">false</span>;         <span class="var">VoglioEntrare</span>[1] = <span class="kw">false</span>;</code></pre>
+      </div>
+
+      <div class="callout callout-amber">
+        <strong>Problema dell'attesa attiva:</strong> il processo esegue continuamente il ciclo while consumando CPU inutilmente. Questo è uno spreco di risorse: il SO potrebbe sospendere il processo in attesa invece di lasciarlo girare a vuoto.
+      </div>
+
+      <h2>Soluzioni hardware</h2>
+      <p>Il problema dell'algoritmo precedente è che la coppia di istruzioni non è atomica. Le soluzioni hardware rendono questa coppia <em>atomica</em>:</p>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-amber">🔌</div><div><h3>Disabilitazione interrupt</h3></div></div>
+          <div class="card-body">
+            Disabilitare le interruzioni prima delle istruzioni atomiche, riabilitarle dopo.<br><br>
+            <span class="badge badge-teal">Pro</span> semplice da implementare<br><br>
+            <span class="badge badge-red">Contro</span> pericoloso su sistemi multiprocessore, non si può usare in user space
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-teal">🔬</div><div><h3>Istruzioni atomiche</h3></div></div>
+          <div class="card-body">
+            Istruzioni macchina che controllano e modificano un dato in <em>una sola operazione indivisibile</em>.<br><br>
+            <span class="badge badge-teal">Esempio</span> Test-and-Set, Compare-and-Swap<br><br>
+            <span class="badge badge-teal">Pro</span> funzionano anche su sistemi multiprocessore
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-blue">
+        <strong>Perché serve l'atomicità?</strong> Il problema nasce perché la coppia <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px">while (Occupata) endwhile; Occupata = true;</code> non è atomica: il SO può interrompere tra le due istruzioni e permettere a un altro processo di entrare. Se fossero un'unica istruzione atomica, il problema non esisterebbe.
+      </div>
+
+      <h2>Strumenti del SO: semafori e mutex</h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-purple">🚦</div><div><h3>Semaforo</h3></div></div>
+          <div class="card-body">Variabile intera con due operazioni atomiche: <strong>wait()</strong> (P) e <strong>signal()</strong> (V). Il processo si blocca se il semaforo è 0 invece di fare busy waiting. Gestito dal kernel.</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon icon-blue">🔐</div><div><h3>Mutex</h3></div></div>
+          <div class="card-body">Mutual Exclusion lock: variabile booleana che indica se la sezione critica è occupata. Solo il thread che acquisisce il lock può rilasciarlo. Più semplice del semaforo.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;margin-top:2rem">
+        <button class="btn-secondary" onclick="showSection('sc')">← Sezione critica</button>
+        <button class="btn-primary" onclick="showSection('flashcard')">Avanti: Flashcard →</button>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ FLASHCARD ═══════════════════ -->
+    <section class="page-section" id="flashcard">
+      <div class="section-hero">
+        <div class="section-eyebrow">07 — Ripasso</div>
+        <h1>Flashcard di <span>Ripasso</span></h1>
+        <p class="section-lead">Clicca su ogni card per vedere la risposta. Usale per testare la tua memoria prima del quiz.</p>
+      </div>
+
+      <div class="flashcard-grid" id="flashcard-container"></div>
+
+      <div style="display:flex;gap:1rem;margin-top:2rem">
+        <button class="btn-secondary" onclick="showSection('soluzioni')">← Soluzioni</button>
+        <button class="btn-primary" onclick="showSection('quiz')">Vai al Quiz →</button>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ QUIZ ═══════════════════ -->
+    <section class="page-section" id="quiz">
+      <div class="section-hero">
+        <div class="section-eyebrow">08 — Verifica</div>
+        <h1>Quiz <span>Finale</span></h1>
+        <p class="section-lead">10 domande su tutti gli argomenti. Rispondi a tutte prima di controllare.</p>
+      </div>
+
+      <div class="quiz-stats">
+        <div class="quiz-stat"><div class="qs-num" id="q-answered">0</div><div class="qs-lbl">risposte</div></div>
+        <div class="quiz-stat"><div class="qs-num">10</div><div class="qs-lbl">totale</div></div>
+        <div class="quiz-stat"><div class="qs-num" id="q-score">—</div><div class="qs-lbl">punteggio</div></div>
+      </div>
+
+      <div id="quiz-container" style="margin-top:2rem"></div>
+
+      <div class="quiz-actions" id="quiz-actions">
+        <button class="btn-primary" onclick="submitQuiz()">Verifica risposte ✓</button>
+        <button class="btn-secondary" onclick="resetQuiz()">Ricomincia</button>
+      </div>
+
+      <div class="result-card" id="result-card">
+        <div class="stars" id="result-stars">⭐⭐⭐</div>
+        <div class="result-score" id="result-score">0/10</div>
+        <div class="result-label" id="result-pct">0%</div>
+        <div class="result-msg" id="result-msg"></div>
+        <div class="result-sub" id="result-sub"></div>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+          <button class="btn-primary" onclick="resetQuiz()">Riprova</button>
+          <button class="btn-secondary" onclick="showSection('processi')">Rivedi gli appunti</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  const sections = ['processi','thread','vantaggi','concorrenza','sc','soluzioni','flashcard','quiz'];
+  let visitedSections = new Set(['processi']);
+
+  function showSection(id) {
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav-link').forEach(l => {
+      if (l.getAttribute('onclick') && l.getAttribute('onclick').includes("'"+id+"'")) {
+        l.classList.add('active');
+      }
+    });
+    visitedSections.add(id);
+    updateProgress();
+    window.scrollTo({top:0, behavior:'smooth'});
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('overlay').classList.remove('active');
+    }
+  }
+
+  function updateProgress() {
+    const pct = Math.round((visitedSections.size / sections.length) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = pct + '%';
+  }
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('active');
+  }
+
+  // ── FLASHCARDS ──
+  const flashcards = [
+    { q: 'Cos\'è un processo?', a: 'Un programma in esecuzione. È l\'unità di esecuzione all\'interno del SO, con esecuzione tipicamente sequenziale.' },
+    { q: 'Differenza tra programma e processo?', a: 'Programma = entità passiva (file su disco). Processo = entità attiva (in esecuzione con codice, dati, PC, registri, stack).' },
+    { q: 'Quali sono i 5 stati di un processo?', a: 'init → ready → running → waiting → terminated. Da running si può tornare a ready (revoca CPU) o passare a waiting (attesa evento).' },
+    { q: 'Cos\'è un thread (processo leggero)?', a: 'Unità di esecuzione indipendente all\'interno di un processo. Condivide lo spazio di indirizzamento con gli altri thread. Ha un TCB proprio.' },
+    { q: 'Cosa condivide un thread con il processo?', a: 'Codice eseguibile, dati (variabili globali), file aperti, risorse del kernel.' },
+    { q: 'Cosa è privato di ogni thread?', a: 'Program counter, registri CPU, stack proprio, TSD (Thread Specific Data).' },
+    { q: 'Di quanto è più costoso creare un processo vs thread?', a: 'Creare un processo costa 30 volte di più. Il context switch di processo costa 5 volte di più.' },
+    { q: 'Cos\'è la race condition?', a: 'Quando il risultato dell\'esecuzione dipende dalla temporizzazione degli accessi ai dati condivisi. Deve essere evitata.' },
+    { q: 'Cos\'è la sezione critica?', a: 'Parte del codice in cui un processo accede a risorse condivise. L\'accesso deve essere mutuamente esclusivo nel tempo.' },
+    { q: 'I 3 requisiti della sezione critica?', a: '1. Mutua esclusione (un solo processo per volta)\n2. Progresso (no stallo/deadlock)\n3. Attesa limitata (no starvation)' },
+    { q: 'Come funziona l\'algoritmo di Peterson?', a: 'Usa VoglioEntrare[] e Turno. In caso di accesso contemporaneo entrambi cedono il passo. Usa busy waiting → spreco CPU.' },
+    { q: 'Perché le soluzioni hardware servono?', a: 'Perché la coppia (controllo + modifica) non è atomica. Le soluzioni hardware la rendono atomica con istruzioni macchina speciali.' },
+    { q: 'Threading asincrono vs sincrono?', a: 'Asincrono: padre crea figli e continua indipendentemente. Sincrono (fork-join): padre attende che tutti i figli terminino.' },
+    { q: 'Vantaggi principali dei thread?', a: 'Tempo di risposta, condivisione risorse automatica, economia (30x più veloci da creare), scalabilità su multiprocessore.' },
+  ];
+
+  const fc = document.getElementById('flashcard-container');
+  flashcards.forEach((card, i) => {
+    const colors = ['var(--accent)', 'var(--teal)', 'var(--amber)', 'var(--purple)', 'var(--red)'];
+    const c = colors[i % colors.length];
+    const div = document.createElement('div');
+    div.className = 'flashcard';
+    div.innerHTML = `
+      <div class="flashcard-accent" style="background:${c}"></div>
+      <div class="flashcard-q">${card.q}</div>
+      <div class="flashcard-a">${card.a.replace(/\n/g,'<br>')}</div>
+      <div class="flashcard-hint">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M6 4v3M6 8.5v.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        <span id="hint-${i}">Clicca per la risposta</span>
+      </div>`;
+    div.onclick = () => {
+      div.classList.toggle('flipped');
+      document.getElementById('hint-${i}'.replace('${i}', i)).textContent =
+        div.classList.contains('flipped') ? 'Clicca per la domanda' : 'Clicca per la risposta';
+    };
+    fc.appendChild(div);
+  });
+
+  // ── QUIZ ──
+  const questions = [
+    { q: 'Qual è la definizione corretta di "processo"?', opts: ['Un file eseguibile su disco', 'Un programma in esecuzione, entità attiva del SO', 'Un thread del kernel', 'Un\'istruzione macchina'], ans: 1 },
+    { q: 'Quanto costa creare un processo rispetto a un thread?', opts: ['Uguale costo', 'Il processo costa 5 volte di più', 'Il processo costa 30 volte di più', 'Il thread costa il doppio del processo'], ans: 2 },
+    { q: 'Quali risorse condividono i thread dello stesso processo?', opts: ['Solo lo stack', 'Solo i registri CPU', 'Codice, dati e file aperti', 'Nulla — ogni thread è completamente isolato'], ans: 2 },
+    { q: 'Cos\'è una "race condition"?', opts: ['Una tecnica di ottimizzazione del compilatore', 'Un algoritmo di scheduling dei processi', 'Quando il risultato dipende dalla temporizzazione degli accessi ai dati condivisi', 'Il meccanismo di context switch tra thread'], ans: 2 },
+    { q: 'Qual è la definizione corretta di "sezione critica"?', opts: ['Il codice più lento del programma', 'La parte del codice in cui si accede a risorse condivise', 'Una sezione che non può mai essere interrotta', 'Il main() del programma'], ans: 1 },
+    { q: 'Quali sono i tre requisiti per la corretta gestione della sezione critica?', opts: ['Velocità, efficienza, parallelismo', 'Mutua esclusione, progresso, attesa limitata', 'Sincronizzazione, comunicazione, cooperazione', 'Stallo, starvation, deadlock'], ans: 1 },
+    { q: 'L\'algoritmo di Peterson risolve la mutua esclusione tramite:', opts: ['Disabilitazione degli interrupt', 'Istruzioni macchina atomiche come Test-and-Set', 'Un meccanismo di "gentilezza" con due variabili condivise', 'Semafori gestiti dal kernel'], ans: 2 },
+    { q: 'Nel threading sincrono (fork-join):', opts: ['Il padre non aspetta mai la terminazione dei figli', 'Il padre crea i figli e attende che tutti terminino prima di proseguire', 'I figli non condividono dati tra loro', 'I thread sono completamente indipendenti'], ans: 1 },
+    { q: 'Quale proprietà garantisce che nessun processo attenda indefinitamente l\'accesso alla sezione critica?', opts: ['Mutua esclusione', 'Progresso (no deadlock)', 'Attesa limitata (no starvation)', 'Sincronizzazione'], ans: 2 },
+    { q: 'Qual è il problema principale dell\'attesa attiva (busy waiting)?', opts: ['Non garantisce correttamente la mutua esclusione', 'È troppo complessa da implementare', 'Spreca cicli CPU mentre il processo aspetta', 'Funziona solo su sistemi monoprocessore'], ans: 2 }
+  ];
+
+  let userAnswers = {};
+  let quizSubmitted = false;
+
+  function buildQuiz() {
+    const qc = document.getElementById('quiz-container');
+    qc.innerHTML = '';
+    userAnswers = {};
+    quizSubmitted = false;
+    document.getElementById('result-card').style.display = 'none';
+    document.getElementById('quiz-actions').style.display = 'flex';
+    document.getElementById('q-answered').textContent = '0';
+    document.getElementById('q-score').textContent = '—';
+
+    questions.forEach((q, i) => {
+      const letters = ['A','B','C','D'];
+      const div = document.createElement('div');
+      div.className = 'q-card';
+      div.id = 'q-card-' + i;
+      div.innerHTML = `
+        <div class="q-num">Domanda ${i+1} / ${questions.length}</div>
+        <div class="q-text">${q.q}</div>
+        <div class="q-options">
+          ${q.opts.map((opt, j) => `
+            <button class="q-opt" id="opt-${i}-${j}" onclick="selectAnswer(${i},${j})">
+              <span class="q-opt-letter">${letters[j]}</span>
+              ${opt}
+            </button>
+          `).join('')}
+        </div>`;
+      qc.appendChild(div);
+    });
+  }
+
+  function selectAnswer(qi, oi) {
+    if (quizSubmitted) return;
+    document.querySelectorAll(`#q-card-${qi} .q-opt`).forEach(b => b.classList.remove('selected'));
+    document.getElementById(`opt-${qi}-${oi}`).classList.add('selected');
+    userAnswers[qi] = oi;
+    document.getElementById('q-answered').textContent = Object.keys(userAnswers).length;
+  }
+
+  function submitQuiz() {
+    if (quizSubmitted) return;
+    quizSubmitted = true;
+    let score = 0;
+    questions.forEach((q, i) => {
+      const chosen = userAnswers[i];
+      q.opts.forEach((_, j) => {
+        const btn = document.getElementById(`opt-${i}-${j}`);
+        btn.disabled = true;
+        btn.classList.remove('selected');
+        if (j === q.ans) btn.classList.add('correct');
+        else if (j === chosen && chosen !== q.ans) btn.classList.add('wrong');
+      });
+      if (chosen === q.ans) score++;
+    });
+
+    const pct = Math.round((score / questions.length) * 100);
+    document.getElementById('q-score').textContent = score + '/10';
+    document.getElementById('result-card').style.display = 'block';
+    document.getElementById('quiz-actions').style.display = 'none';
+    document.getElementById('result-score').textContent = score + '/10';
+    document.getElementById('result-pct').textContent = pct + '%';
+
+    const stars = pct >= 90 ? '⭐⭐⭐' : pct >= 70 ? '⭐⭐' : '⭐';
+    const msgs = [
+      ['Eccellente!', 'Ottima preparazione, sei pronto per la verifica!'],
+      ['Molto bene!', 'Risultato solido. Rileggi i concetti sbagliati.'],
+      ['Buono!', 'Hai le basi. Rivedi le sezioni critiche e la concorrenza.'],
+      ['Studia ancora', 'Rileggi gli appunti partendo dai fondamenti.']
+    ];
+    const level = pct >= 90 ? 0 : pct >= 70 ? 1 : pct >= 50 ? 2 : 3;
+    document.getElementById('result-stars').textContent = stars;
+    document.getElementById('result-msg').textContent = msgs[level][0];
+    document.getElementById('result-sub').textContent = msgs[level][1];
+
+    document.getElementById('result-score').style.color =
+      pct >= 70 ? 'var(--teal)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
+
+    visitedSections.add('quiz');
+    updateProgress();
+  }
+
+  function resetQuiz() {
+    buildQuiz();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  buildQuiz();
+  updateProgress();
+</script>
+</body>
+</html>
